@@ -108,7 +108,10 @@ class Resource(object):
 
         self.__cached_object__ = None
         self.__rtype__ = 'GenericResource'
-        self.__path_prefix__ = None
+        if 'path_prefix' in kwargs:
+            self.__path_prefix__ = kwargs['path_prefix']
+        else:
+            self.__path_prefix__ = None
 
     def __repr__(self):
         return "{}\nname: {}\ndescription: {}\nfilename: {}\nunits: {}\n".\
@@ -627,47 +630,66 @@ class TextGridTierResource(BaseTierResource):
     """
     def __init__(self, **kwargs):
         super(TextGridTierResource, self).__init__(**kwargs)
-
-        if 'tiername' in kwargs:
-            self.__tiername__ = kwargs['tiername']
+##        the following was written by spyros and should be kept!!!:
+##        if 'tiername' in kwargs:
+##            self.__tiername__ = kwargs['tiername']
+##        else:
+##            self.__tiername__ = None
+        if 'tiernames' in kwargs:
+            self.__tiernames__ = kwargs['tiernames']
         else:
-            self.__tiername__ = None
+            self.__tiernames__ = None
 
     def __repr__(self):
         return super(TextGridTierResource, self).__repr__() + \
-           "tiername: {}\n".format(self.__tiername__)
+           "tiernames: {}\n".format(self.__tiernames__)
 
     def __toyaml__(self):
         return dict(super(TextGridTierResource, self).__toyaml__().items() + \
-           {'tiername': self.__tiername__}.items())
+           {'tiernames': self.__tiernames__}.items())
 
     def __load__(self):
         if super(TextGridTierResource, self).__load__() < 0:
             return -1
-        if self.__tiername__ is None:
+        if self.__tiernames__ is None:
             print "No tiername has been set."
             print "No TierFrame can be created."
             return -1
         if self.__cached_object__ is None:
             self.__cached_object__ = open_intervalframe_from_textgrid\
-                               (self.get_filepath())[self.__tiername__]
+                               (self.get_filepath())[self.__tiernames__]
         return 0
-
-    def set_tiername(self, tiername):
-        """ Set the tiername for this tier resource
+##    the following was written by spyros and should be kept!!:
+##    def set_tiername(self, tiername):
+##        """ Set the tiername for this tier resource
+##
+##        Arguments:
+##
+##        tiername -- the name of the tier to be read from the TextGrid
+##
+##        """
+##        self.__tiername__ = tiername
+##
+##    def get_tiername(self):
+##        """ Return  the tiername for this tier resource
+##
+##        """
+##        return self.__tiername__
+    def set_tiernames(self, tiernames):
+        """ Set the tiernames for this tier resource
 
         Arguments:
 
         tiername -- the name of the tier to be read from the TextGrid
 
         """
-        self.__tiername__ = tiername
+        self.__tiernames__ = tiernames
 
-    def get_tiername(self):
-        """ Return  the tiername for this tier resource
+    def get_tiernames(self):
+        """ Return  the tiernames for this tier resource
 
         """
-        return self.__tiername__
+        return self.__tiernames__
 
 class CSVTierResource(BaseTierResource):
     """ Intervalframe or Pointframe from TextGrid
@@ -993,7 +1015,7 @@ class Mumodo(object):
         """
         return (r for r in self.__resources__.values())
 
-    def add_resource(self, resource):
+    def add_resource(self, resource, prefixed=False):
         """ Add a resource to this mumodo
 
         The resource has to be an object of type mumodo.corpus.Resource
@@ -1008,9 +1030,14 @@ class Mumodo(object):
                 print "Resource must have a unique name!"
                 return -1
             self.__resources__[rname] = resource
-            resource.set_path_prefix(self.__localpath__)
+            if prefixed:
+                resource.set_path_prefix(resource.__path_prefix__)
+            else:
+                resource.set_path_prefix(self.__localpath__)
+            #resource.set_path_prefix(self.__localpath__)
             if resource.__filename__ not in self.__files__:
                 self.__files__.append(resource.__filename__)
+        #print("You can change function add_resource!")
 
     def get_resource_names(self):
         """ Return the names of the resources attached to this Mumodo
@@ -1095,12 +1122,13 @@ def build_mumodo(stream):
             #Create the object here
             if object_type in keys.keys():
                 obj = keys[object_type](**kwargs)
-
+                #print "kwargs: ", kwargs
                 #build the object tree
                 if isinstance(obj, Mumodo):
                     mumodolist.append(obj)
                 elif isinstance(obj, Resource):
-                    mumodolist[-1].add_resource(obj)
+                    #print obj.__path_prefix__
+                    mumodolist[-1].add_resource(obj, True)
 
             object_type = line[1:]
             continue
@@ -1134,6 +1162,7 @@ def read_mumodo_from_file(filepath, encoding='utf-8'):
         for line in f:
             inser += line
     return build_mumodo(inser)
+    print("You can change it!")
 
 def write_mumodo_to_file(mumodos, filepath, encoding='utf-8'):
     """ Write mumodos to a file on disk
